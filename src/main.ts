@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { GameScene } from './GameScene';
+import { GameScene } from './scenes/GameScene';
+import { StoryScene } from './scenes/StoryScene';
+import { TitleScene } from './scenes/TitleScene';
 
 const start = () => {
   const game = new Phaser.Game({
@@ -13,7 +15,7 @@ const start = () => {
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     input: { gamepad: true },
     physics: { default: 'arcade', arcade: { gravity: { x: 0, y: 1400 } } },
-    scene: [GameScene],
+    scene: [TitleScene, StoryScene, GameScene],
   });
   // Handy for debugging from the browser console and for automated playtests.
   (window as unknown as { game: Phaser.Game }).game = game;
