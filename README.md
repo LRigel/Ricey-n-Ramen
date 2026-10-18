@@ -26,6 +26,9 @@ npm run build    # static build in dist/
 | Drop through a ledge | Down + Jump | Down + A |
 | Restart from checkpoint | R | |
 
+On phones and tablets, on-screen buttons appear during levels (play in landscape;
+add `?touch=1` to the URL to force them on).
+
 Ricey climbs walls (walk into one). Ramen runs faster and can dash once per jump by pressing jump again in mid-air.
 The pet you aren't controlling follows along behind. Jump on enemies (or dash
 through them as Ramen) to knock them out.

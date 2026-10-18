@@ -2,8 +2,10 @@ import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene';
 import { StoryScene } from './scenes/StoryScene';
 import { TitleScene } from './scenes/TitleScene';
+import { setupTouchControls } from './touch';
 
 const start = () => {
+  setupTouchControls();
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',

@@ -3,6 +3,7 @@ import { petTexture, type PetState } from '../art/animate';
 import { addBackdrop, THEMES, TILE, type Theme, type ThemeId } from '../art/themes';
 import { goTo, textStyle } from '../flow';
 import { LEVELS, type LevelDef } from '../levels';
+import { isTouch, showTouchPad, touch } from '../touch';
 
 type Body = Phaser.Physics.Arcade.Body;
 type Img = Phaser.Physics.Arcade.Image;
@@ -162,6 +163,8 @@ export class GameScene extends Phaser.Scene {
     this.levelW = Math.max(...map.map((r) => r.length)) * TILE;
     this.levelH = map.length * TILE;
     addBackdrop(this, id, this.levelW);
+    showTouchPad(true);
+    this.events.once('shutdown', () => showTouchPad(false));
 
     const solids = this.physics.add.staticGroup();
     const ledges = this.physics.add.staticGroup();
@@ -253,7 +256,7 @@ export class GameScene extends Phaser.Scene {
       hint: this.add.text(62, 32, '', font).setScrollFactor(0).setDepth(100),
       pickups: this.add.text(626, 14, '', textStyle(12)).setOrigin(1, 0).setScrollFactor(0).setDepth(100),
     };
-    if (this.levelIdx === 0) {
+    if (this.levelIdx === 0 && !isTouch) {
       this.add.text(320, 342, 'Arrows/WASD move   Space jump   C swap', font).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0.85);
     }
     const title = this.add.text(320, 110, this.level.name, textStyle(20)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
@@ -299,17 +302,17 @@ export class GameScene extends Phaser.Scene {
     const k = this.keys;
     const pad = this.input.gamepad?.pad1;
     const stickX = pad ? pad.leftStick.x : 0;
-    const left = k.LEFT.isDown || k.A.isDown || !!pad?.left || stickX < -0.4;
-    const right = k.RIGHT.isDown || k.D.isDown || !!pad?.right || stickX > 0.4;
+    const left = k.LEFT.isDown || k.A.isDown || !!pad?.left || stickX < -0.4 || touch.left;
+    const right = k.RIGHT.isDown || k.D.isDown || !!pad?.right || stickX > 0.4 || touch.right;
     const padA = !!pad?.A;
     const padY = !!(pad?.Y || pad?.L1 || pad?.R1);
     const jd = Phaser.Input.Keyboard.JustDown;
     const c: Controls = {
       x: (right ? 1 : 0) - (left ? 1 : 0),
-      down: k.DOWN.isDown || k.S.isDown || !!pad?.down || (pad ? pad.leftStick.y > 0.5 : false),
-      jumpHeld: k.SPACE.isDown || k.Z.isDown || k.W.isDown || k.UP.isDown || padA,
-      jumpPressed: jd(k.SPACE) || jd(k.Z) || jd(k.W) || jd(k.UP) || (padA && !this.padPrev.a),
-      swapPressed: jd(k.C) || jd(k.SHIFT) || jd(k.K) || (padY && !this.padPrev.y),
+      down: k.DOWN.isDown || k.S.isDown || !!pad?.down || (pad ? pad.leftStick.y > 0.5 : false) || touch.down,
+      jumpHeld: k.SPACE.isDown || k.Z.isDown || k.W.isDown || k.UP.isDown || padA || touch.jump,
+      jumpPressed: jd(k.SPACE) || jd(k.Z) || jd(k.W) || jd(k.UP) || (padA && !this.padPrev.a) || touch.consume('jumpPressed'),
+      swapPressed: jd(k.C) || jd(k.SHIFT) || jd(k.K) || (padY && !this.padPrev.y) || touch.consume('swapPressed'),
     };
     this.padPrev = { a: padA, y: padY };
     return c;
@@ -575,7 +578,7 @@ export class GameScene extends Phaser.Scene {
     this.add.rectangle(320, 165, 440, 120, 0x1b1a2e, 0.85).setScrollFactor(0).setDepth(99).setStrokeStyle(3, 0xfff6c2);
     this.add.text(320, 130, CLEAR_LINES[this.levelIdx] ?? 'Level clear!', textStyle(12)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
     this.add.text(320, 165, `${this.theme.collectibleName} ${this.collected}/${this.totalPickups}`, textStyle(10, '#fff6c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100);
-    this.add.text(320, 198, 'Press Space', textStyle(10)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+    this.add.text(320, 198, isTouch ? 'Tap JUMP' : 'Press Space', textStyle(10)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
   }
 
   private finishLevel() {
@@ -623,7 +626,7 @@ export class GameScene extends Phaser.Scene {
   private refreshHud() {
     const def = this.leader.def;
     this.hud.face.setTexture(`${def.key}-idle`);
-    this.hud.name.setText(`${def.name}  (C to swap)`);
+    this.hud.name.setText(isTouch ? def.name : `${def.name}  (C to swap)`);
     this.hud.hint.setText(def.hint);
     this.hud.pickups.setText(`${this.theme.collectibleName} ${this.collected}/${this.totalPickups}`);
   }
