@@ -1,0 +1,30 @@
+{
+  "name": "ricey-n-ramen",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc && vite build",
+    "preview": "vite preview --host"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LRigel/Ricey-n-Ramen.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LRigel/Ricey-n-Ramen/issues"
+  },
+  "homepage": "https://github.com/LRigel/Ricey-n-Ramen#readme",
+  "dependencies": {
+    "phaser": "^3.90.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5"
+  },
+  "private": true,
+  "type": "module"
+}
