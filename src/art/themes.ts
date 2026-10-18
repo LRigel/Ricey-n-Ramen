@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { canvasTexture, gradient, paint, pixelTexture, rect, rng } from './draw';
 import { RAMEN_FRAMES, RAMEN_PAL, RICEY_FRAMES, RICEY_PAL } from './pets';
+import type { UiKey } from '../i18n';
 import { SPRITES } from './props';
 
 export const TILE = 32;
@@ -15,7 +16,7 @@ export type ThemeId = 'backyard' | 'bush' | 'market' | 'jiufen' | 'house';
 export interface Theme {
   sky: [string, string];
   collectible: string; // sprite key
-  collectibleName: string;
+  collectibleName: UiKey;
   enemy?: string; // ground patrol sprite key
   bird?: string; // flying patrol sprite key prefix
   goal: string;
@@ -66,7 +67,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   backyard: {
     sky: ['#7cc4f0', '#cdeefc'],
     collectible: 'treat',
-    collectibleName: 'Treats',
+    collectibleName: 'treats',
     goal: 'goal-gate',
     top(ctx) {
       this.fill(ctx);
@@ -132,7 +133,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   bush: {
     sky: ['#f4a261', '#fde4b0'],
     collectible: 'treat',
-    collectibleName: 'Treats',
+    collectibleName: 'treats',
     bird: 'magpie',
     goal: 'goal-sign',
     top(ctx) {
@@ -200,7 +201,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   market: {
     sky: ['#141433', '#3a2a5a'],
     collectible: 'dumpling',
-    collectibleName: 'Dumplings',
+    collectibleName: 'dumplings',
     enemy: 'scooter',
     goal: 'goal-lantern',
     top(ctx) {
@@ -268,7 +269,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   jiufen: {
     sky: ['#f08a5d', '#6b4a8a'],
     collectible: 'bubbletea',
-    collectibleName: 'Bubble tea',
+    collectibleName: 'bubbletea',
     bird: 'bluemagpie',
     goal: 'goal-sign',
     top(ctx) {
@@ -326,7 +327,7 @@ export const THEMES: Record<ThemeId, Theme> = {
   house: {
     sky: ['#f4e7d2', '#e8d6ba'],
     collectible: 'treat',
-    collectibleName: 'Treats',
+    collectibleName: 'treats',
     enemy: 'vacuum',
     goal: 'goal-door',
     top(ctx) {

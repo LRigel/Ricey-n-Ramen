@@ -3,6 +3,7 @@ import { petTexture, type PetState } from '../art/animate';
 import { addBackdrop, THEMES, TILE, type Theme, type ThemeId } from '../art/themes';
 import { goTo, textStyle } from '../flow';
 import { LEVELS, type LevelDef } from '../levels';
+import { lang, t, tr } from '../i18n';
 import { isTouch, showTouchPad, touch } from '../touch';
 
 type Body = Phaser.Physics.Arcade.Body;
@@ -17,16 +18,16 @@ interface PetDef {
   hitH: number;
   canClimb: boolean;
   canDash: boolean;
-  hint: string;
+  hint: 'climbHint' | 'dashHint';
 }
 
 const RICEY: PetDef = {
   key: 'ricey', name: 'Ricey', speed: 200, jump: 620, hitW: 42, hitH: 40,
-  canClimb: true, canDash: false, hint: 'Walk into a wall to climb it',
+  canClimb: true, canDash: false, hint: 'climbHint',
 };
 const RAMEN: PetDef = {
   key: 'ramen', name: 'Ramen', speed: 260, jump: 540, hitW: 46, hitH: 36,
-  canClimb: false, canDash: true, hint: 'Jump again in mid-air to dash',
+  canClimb: false, canDash: true, hint: 'dashHint',
 };
 
 const COYOTE = 0.1; // seconds you can still jump after walking off a ledge
@@ -39,8 +40,6 @@ const TRAIL_SPACING = 3; // px between recorded leader positions
 const FOLLOW_GAP = 22; // samples the follower stays behind (~66px)
 const TAIL_OFFSET = 8; // sprites include a tail, so shift them back over the hitbox
 const DASH_GROUND_CHECK = 28; // px: a jump pressed this close above the ground is a buffered jump, not a dash
-
-const CLEAR_LINES = ['Not in the backyard...', 'Wait, what is that on the ground?', 'Still no Nien-Nien...', 'Nothing up here either.', "There's a light on..."];
 
 class Pet {
   hb: Img; // invisible hitbox carrying the physics body
@@ -250,17 +249,18 @@ export class GameScene extends Phaser.Scene {
     this.keys = this.input.keyboard!.addKeys('LEFT,RIGHT,DOWN,A,D,S,SPACE,Z,W,UP,C,SHIFT,K,R') as Record<string, Phaser.Input.Keyboard.Key>;
 
     const font = textStyle(10);
+    const zh = lang === 'zh'; // Chinese text is taller, so the HUD lines spread out
     this.hud = {
       face: this.add.image(30, 26, 'ricey-idle').setScale(0.55).setScrollFactor(0).setDepth(100),
-      name: this.add.text(62, 14, '', textStyle(12)).setScrollFactor(0).setDepth(100),
-      hint: this.add.text(62, 32, '', font).setScrollFactor(0).setDepth(100),
+      name: this.add.text(62, zh ? 6 : 14, '', textStyle(12)).setScrollFactor(0).setDepth(100),
+      hint: this.add.text(62, zh ? 34 : 32, '', font).setScrollFactor(0).setDepth(100),
       pickups: this.add.text(626, 14, '', textStyle(12)).setOrigin(1, 0).setScrollFactor(0).setDepth(100),
     };
     if (this.levelIdx === 0 && !isTouch) {
-      this.add.text(320, 342, 'Arrows/WASD move   Space jump   C swap', font).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0.85);
+      this.add.text(320, 342, t('controls'), font).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0.85);
     }
-    const title = this.add.text(320, 110, this.level.name, textStyle(20)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
-    const sub = this.add.text(320, 142, this.level.country, textStyle(10, '#fff6c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+    const title = this.add.text(320, 110, tr(this.level.name, this.level.zh.name), textStyle(20)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+    const sub = this.add.text(320, 142, tr(this.level.country, this.level.zh.country), textStyle(10, '#fff6c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100);
     this.tweens.add({ targets: [title, sub], alpha: 0, delay: 1800, duration: 600, onComplete: () => (title.destroy(), sub.destroy()) });
     this.refreshHud();
   }
@@ -576,9 +576,9 @@ export class GameScene extends Phaser.Scene {
     this.registry.set('scores', scores);
 
     this.add.rectangle(320, 165, 440, 120, 0x1b1a2e, 0.85).setScrollFactor(0).setDepth(99).setStrokeStyle(3, 0xfff6c2);
-    this.add.text(320, 130, CLEAR_LINES[this.levelIdx] ?? 'Level clear!', textStyle(12)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
-    this.add.text(320, 165, `${this.theme.collectibleName} ${this.collected}/${this.totalPickups}`, textStyle(10, '#fff6c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100);
-    this.add.text(320, 198, isTouch ? 'Tap JUMP' : 'Press Space', textStyle(10)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+    this.add.text(320, 130, tr(this.level.clear, this.level.zh.clear), textStyle(12)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+    this.add.text(320, 165, `${t(this.theme.collectibleName)} ${this.collected}/${this.totalPickups}`, textStyle(10, '#fff6c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+    this.add.text(320, 198, t(isTouch ? 'nextTouch' : 'next'), textStyle(10)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
   }
 
   private finishLevel() {
@@ -626,9 +626,9 @@ export class GameScene extends Phaser.Scene {
   private refreshHud() {
     const def = this.leader.def;
     this.hud.face.setTexture(`${def.key}-idle`);
-    this.hud.name.setText(isTouch ? def.name : `${def.name}  (C to swap)`);
-    this.hud.hint.setText(def.hint);
-    this.hud.pickups.setText(`${this.theme.collectibleName} ${this.collected}/${this.totalPickups}`);
+    this.hud.name.setText(isTouch ? def.name : `${def.name}  ${t('swapHint')}`);
+    this.hud.hint.setText(t(def.hint));
+    this.hud.pickups.setText(`${t(this.theme.collectibleName)} ${this.collected}/${this.totalPickups}`);
   }
 }
 

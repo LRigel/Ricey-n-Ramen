@@ -14,6 +14,9 @@ export interface LevelDef {
   theme: ThemeId;
   name: string;
   country: string;
+  /** Shown when the level is finished. */
+  clear: string;
+  zh: { name: string; country: string; clear: string };
   map: string[];
 }
 
@@ -22,6 +25,8 @@ export const LEVELS: LevelDef[] = [
     theme: 'backyard',
     name: 'The Backyard',
     country: 'Australia',
+    clear: 'Not in the backyard...',
+    zh: { name: '後院', country: '澳洲', clear: '後院沒有……' },
     map: [
     '..................................................................',
     '..................................................................',
@@ -41,6 +46,8 @@ export const LEVELS: LevelDef[] = [
     theme: 'bush',
     name: 'The Bush',
     country: 'Australia',
+    clear: 'Wait, what is that on the ground?',
+    zh: { name: '澳洲叢林', country: '澳洲', clear: '等等，地上那是什麼？' },
     map: [
     '........................................................................',
     '........................................................................',
@@ -60,6 +67,8 @@ export const LEVELS: LevelDef[] = [
     theme: 'market',
     name: 'Night Market',
     country: 'Taiwan',
+    clear: 'Still no Nien-Nien...',
+    zh: { name: '夜市', country: '台灣', clear: '還是沒看到 Nien-Nien……' },
     map: [
     '..........................................................................',
     '..........................................................................',
@@ -79,6 +88,8 @@ export const LEVELS: LevelDef[] = [
     theme: 'jiufen',
     name: 'Jiufen Old Street',
     country: 'Taiwan',
+    clear: 'Nothing up here either.',
+    zh: { name: '九份老街', country: '台灣', clear: '上面也沒有。' },
     map: [
     '............................................................................',
     '............................................................................',
@@ -98,6 +109,8 @@ export const LEVELS: LevelDef[] = [
     theme: 'house',
     name: 'Home Sweet Home',
     country: 'Australia',
+    clear: "There's a light on...",
+    zh: { name: '溫暖的家', country: '澳洲', clear: '有一盞燈亮著……' },
     map: [
     '..........................................................................',
     '...................................oo.....................................',

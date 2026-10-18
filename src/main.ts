@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { GameScene } from './scenes/GameScene';
 import { StoryScene } from './scenes/StoryScene';
 import { TitleScene } from './scenes/TitleScene';
+import { loadFont } from './i18n';
 import { setupTouchControls } from './touch';
 
 const start = () => {
@@ -23,5 +24,6 @@ const start = () => {
   (window as unknown as { game: Phaser.Game }).game = game;
 };
 
-// Wait briefly for the pixel font so text doesn't render in the fallback first.
-Promise.race([document.fonts.load('16px "Press Start 2P"'), new Promise((r) => setTimeout(r, 1500))]).then(start);
+// Wait briefly for the pixel font(s) so text doesn't render in the fallback first.
+// Both are loaded so the language button can show 中文 / English crisply.
+Promise.all([loadFont('en'), loadFont('zh')]).then(start);

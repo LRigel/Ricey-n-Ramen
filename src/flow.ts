@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { fontFamily, fontSize } from './i18n';
 import { FLOW } from './story';
 
 const SAVE_KEY = 'ricey-n-ramen:step';
@@ -27,14 +28,13 @@ export function goTo(scene: Phaser.Scene, step: number) {
     scene.scene.start('title');
     return;
   }
-  if (step === 0) scene.registry.set('pickups', { got: 0, total: 0 });
+  if (step === 0) scene.registry.set('scores', {});
   save(step);
   if ('story' in s) scene.scene.start('story', { id: s.story, step });
   else scene.scene.start('game', { level: s.level, step });
 }
 
-export const FONT = '"Press Start 2P", monospace';
-
 export function textStyle(size: number, color = '#ffffff'): Phaser.Types.GameObjects.Text.TextStyle {
-  return { fontFamily: FONT, fontSize: `${size}px`, color, stroke: '#1b1a2e', strokeThickness: Math.max(3, size / 3) };
+  const px = fontSize(size);
+  return { fontFamily: fontFamily(), fontSize: `${px}px`, color, stroke: '#1b1a2e', strokeThickness: Math.min(5, Math.max(3, px / 3)) };
 }

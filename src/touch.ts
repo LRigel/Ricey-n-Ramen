@@ -2,6 +2,8 @@
 // canvas (easier multi-touch than in-canvas buttons) and feed a shared state
 // that GameScene reads alongside the keyboard and gamepad.
 
+import { fontFamily, t } from './i18n';
+
 export const isTouch =
   new URLSearchParams(location.search).has('touch') || window.matchMedia('(pointer: coarse)').matches;
 
@@ -60,7 +62,7 @@ export function setupTouchControls() {
   const rotate = document.createElement('div');
   rotate.id = 'rotate';
   rotate.className = 'touch';
-  rotate.textContent = 'Turn your phone sideways to play';
+  rotate.textContent = t('rotate');
   document.body.append(rotate);
 
   controls = document.createElement('div');
@@ -71,8 +73,8 @@ export function setupTouchControls() {
       <button class="down">${ARROW(90)}</button>
     </div>
     <div class="pad right">
-      <button class="swap">SWAP</button>
-      <button class="jump">JUMP</button>
+      <button class="swap"></button>
+      <button class="jump"></button>
     </div>
     ${document.fullscreenEnabled ? '<button class="fs" aria-label="Fullscreen">&#x26F6;</button>' : ''}`;
   document.body.append(controls);
@@ -135,6 +137,15 @@ export function setupTouchControls() {
 
 /** Show the movement buttons only while a level is being played. */
 export function showTouchPad(show: boolean) {
+  if (controls) {
+    // Labels follow the language, which can change between levels.
+    controls.style.fontFamily = fontFamily();
+    controls.querySelector('.jump')!.textContent = t('jump');
+    controls.querySelector('.swap')!.textContent = t('swap');
+    const rotate = document.getElementById('rotate')!;
+    rotate.textContent = t('rotate');
+    rotate.style.fontFamily = fontFamily();
+  }
   controls?.classList.toggle('show', show);
   Object.assign(touch, { left: false, right: false, down: false, jump: false, swap: false, jumpPressed: false, swapPressed: false });
 }

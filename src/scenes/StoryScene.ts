@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { petTexture } from '../art/animate';
 import { addBackdrop } from '../art/themes';
 import { goTo, textStyle } from '../flow';
+import { lang, t, tr } from '../i18n';
 import { STORIES, type Line, type Story } from '../story';
 
 const PORTRAIT: Record<string, string> = { Ricey: 'ricey-idle', Ramen: 'ramen-idle', 'Nien-Nien': 'nien' };
@@ -53,7 +54,7 @@ export class StoryScene extends Phaser.Scene {
     // Dialogue box along the top.
     this.add.rectangle(320, 62, 612, 96, 0x1b1a2e, 0.9).setStrokeStyle(3, 0xfff6c2);
     this.face = this.add.image(58, 62, 'ricey-idle').setScale(0.8);
-    this.name = this.add.text(110, 26, '', textStyle(10));
+    this.name = this.add.text(110, lang === 'zh' ? 18 : 26, '', textStyle(10));
     this.body = this.add.text(110, 46, '', { ...textStyle(10), wordWrap: { width: 490 }, lineSpacing: 8 });
     const more = this.add.text(608, 98, '>', textStyle(10, '#fff6c2')).setOrigin(1);
     this.tweens.add({ targets: more, alpha: 0, duration: 400, yoyo: true, repeat: -1 });
@@ -91,9 +92,9 @@ export class StoryScene extends Phaser.Scene {
     if (!narrator) this.face.setTexture(PORTRAIT[line.who]).setScale(line.who === 'Nien-Nien' ? 0.5 : 0.8);
     this.name.setText(line.who).setColor(NAME_COLOR[line.who] ?? '#ffffff');
     this.body.setX(narrator ? 40 : 110).setWordWrapWidth(narrator ? 560 : 490);
-    this.body.setY(narrator ? 52 : 46);
+    this.body.setY(narrator ? 52 : lang === 'zh' ? 54 : 46);
 
-    this.full = line.text;
+    this.full = tr(line.text, line.zh);
     this.body.setText('');
     let shown = 0;
     this.typing = this.time.addEvent({
@@ -133,9 +134,9 @@ export class StoryScene extends Phaser.Scene {
     const got = scores.reduce((n, s) => n + s.got, 0);
     const total = scores.reduce((n, s) => n + s.total, 0);
     this.add.rectangle(320, 180, 640, 360, 0x1b1a2e, 0.85);
-    this.add.text(320, 120, 'THE END', textStyle(28, '#fff6c2')).setOrigin(0.5);
-    this.add.text(320, 170, 'Nien-Nien was in the bathroom all along.', textStyle(10)).setOrigin(0.5);
-    if (total) this.add.text(320, 205, `Snacks found: ${got}/${total}`, textStyle(10, '#d8f0ff')).setOrigin(0.5);
-    this.add.text(320, 250, 'Thanks for playing!', textStyle(12)).setOrigin(0.5);
+    this.add.text(320, 120, t('theEnd'), textStyle(28, '#fff6c2')).setOrigin(0.5);
+    this.add.text(320, 170, t('endLine'), textStyle(10)).setOrigin(0.5);
+    if (total) this.add.text(320, 205, t('snacks', { got, total }), textStyle(10, '#d8f0ff')).setOrigin(0.5);
+    this.add.text(320, 250, t('thanks'), textStyle(12)).setOrigin(0.5);
   }
 }

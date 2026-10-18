@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { petTexture } from '../art/animate';
 import { addBackdrop, makeTextures } from '../art/themes';
 import { goTo, savedStep, textStyle } from '../flow';
+import { BOTH_FONTS, lang, setLang, t } from '../i18n';
 import { FLOW } from '../story';
 import { isTouch } from '../touch';
 
@@ -33,12 +34,26 @@ export class TitleScene extends Phaser.Scene {
     this.add.tileSprite(0, 320, 640, 40, 'backyard-top').setOrigin(0);
 
     this.add.text(320, 70, 'Ricey n Ramen', textStyle(32, '#fff6c2')).setOrigin(0.5);
-    this.add.text(320, 118, 'The Search for Nien-Nien', textStyle(12)).setOrigin(0.5);
+    this.add.text(320, 118, t('subtitle'), textStyle(12)).setOrigin(0.5);
 
     const saved = savedStep();
-    const prompt = this.add.text(320, 190, isTouch ? 'Tap to start' : 'Press Space to start', textStyle(12)).setOrigin(0.5);
+    const prompt = this.add.text(320, 190, t(isTouch ? 'startTouch' : 'start'), textStyle(12)).setOrigin(0.5);
     this.tweens.add({ targets: prompt, alpha: 0.3, duration: 600, yoyo: true, repeat: -1 });
-    const resume = saved > 0 ? this.add.text(320, 222, isTouch ? 'Tap here to continue' : 'C to continue', textStyle(10, '#d8f0ff')).setOrigin(0.5) : undefined;
+    const resume = saved > 0 ? this.add.text(320, 222, t(isTouch ? 'resumeTouch' : 'resume'), textStyle(10, '#d8f0ff')).setOrigin(0.5) : undefined;
+
+    // Language switch: top-right, works with a click/tap or the L key.
+    // It names the other language, in that language's own font size.
+    const langBtn = this.add
+      .text(628, 12, t('otherLanguage'), { ...textStyle(10, '#fff6c2'), fontFamily: BOTH_FONTS, fontSize: lang === 'en' ? '22px' : '10px', strokeThickness: 4 })
+      .setOrigin(1, 0)
+      .setPadding(8)
+      .setInteractive({ useHandCursor: true });
+    const switchLang = () => {
+      setLang(lang === 'en' ? 'zh' : 'en');
+      this.scene.restart();
+    };
+    langBtn.once('pointerdown', switchLang);
+    this.input.keyboard!.once('keydown-L', switchLang);
 
     // The two of them pacing around the yard.
     const pets = ['ricey', 'ramen'].map((key, i) => {
@@ -69,10 +84,12 @@ export class TitleScene extends Phaser.Scene {
       // With a save, taps need a target: the continue line resumes, anywhere else starts over.
       resume.setPadding(12).setInteractive().once('pointerdown', cont);
       this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
-        if (!over.includes(resume)) start();
+        if (!over.includes(resume) && !over.includes(langBtn)) start();
       });
     } else {
-      this.input.once('pointerdown', start);
+      this.input.on('pointerdown', (_p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+        if (!over.includes(langBtn)) start();
+      });
     }
   }
 }

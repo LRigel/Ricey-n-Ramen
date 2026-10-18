@@ -34,6 +34,9 @@ Ricey climbs walls (walk into one). Ramen runs faster and can dash once per jump
 The pet you aren't controlling follows along behind. Jump on enemies (or dash
 through them as Ramen) to knock them out.
 
+Playable in English or Traditional Chinese (台灣華語): switch on the title screen
+(click/tap the language name, or press L), or add `?lang=zh` / `?lang=en` to the URL.
+
 Add `?step=N` to the URL to jump to a point in the story (see `FLOW` in `src/story.ts`).
 
 ## Layout
@@ -42,3 +45,9 @@ Add `?step=N` to the URL to jump to a point in the story (see `FLOW` in `src/sto
 - `src/scenes/StoryScene.ts`, `src/story.ts`: cutscene dialogue and the order of the game
 - `src/levels.ts`: levels as text maps (legend at the top of the file)
 - `src/art/`: pixel art as character maps (`pets.ts`, `props.ts`) and per-level themes (`themes.ts`)
+- `src/i18n.ts`: interface text in both languages (story lines and level names carry their own `zh`)
+
+## Credits
+
+Chinese text uses [Cubic 11 (俐方體11號)](https://github.com/ACh-K/Cubic-11) by ACh-K,
+licensed under the SIL Open Font License (see `public/fonts/Cubic_11-OFL.txt`).
