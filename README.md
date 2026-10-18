@@ -13,6 +13,7 @@ and find Nien-Nien was in the bathroom all along.
 npm install
 npm run dev      # http://localhost:5173 (also served on the LAN)
 npm run build    # static build in dist/
+npm run deploy   # build and publish to https://ricey-n-ramen.pages.dev
 ```
 
 ## Controls
