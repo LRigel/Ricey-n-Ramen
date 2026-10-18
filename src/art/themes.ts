@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { canvasTexture, gradient, paint, pixelTexture, rect, rng } from './draw';
-import { PET_FRAMES, RAMEN_FRAMES, RAMEN_PAL, RICEY_FRAMES, RICEY_PAL } from './pets';
+import { RAMEN_FRAMES, RAMEN_PAL, RICEY_FRAMES, RICEY_PAL } from './pets';
 import { SPRITES } from './props';
 
 export const TILE = 32;
@@ -378,10 +378,9 @@ export const THEMES: Record<ThemeId, Theme> = {
 };
 
 export function makeTextures(scene: Phaser.Scene) {
-  for (const f of PET_FRAMES) {
-    pixelTexture(scene, `ricey-${f}`, RICEY_FRAMES[f], RICEY_PAL, PIXEL);
-    pixelTexture(scene, `ramen-${f}`, RAMEN_FRAMES[f], RAMEN_PAL, PIXEL);
-  }
+  for (const [f, rows] of Object.entries(RICEY_FRAMES)) pixelTexture(scene, `ricey-${f}`, rows, RICEY_PAL, PIXEL);
+  for (const [f, rows] of Object.entries(RAMEN_FRAMES)) pixelTexture(scene, `ramen-${f}`, rows, RAMEN_PAL, PIXEL);
+  pixelTexture(scene, 'dust', ['.ww.', 'wwww', 'wwww', '.ww.'], { w: '#ffffff' }, PIXEL);
   for (const [key, s] of Object.entries(SPRITES)) pixelTexture(scene, key, s.rows, s.pal, s.scale);
 
   for (const [id, t] of Object.entries(THEMES)) {

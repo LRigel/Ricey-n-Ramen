@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { petTexture } from '../art/animate';
 import { addBackdrop } from '../art/themes';
 import { goTo, textStyle } from '../flow';
 import { STORIES, type Line, type Story } from '../story';
@@ -18,6 +19,7 @@ export class StoryScene extends Phaser.Scene {
   private pets: Record<string, Phaser.GameObjects.Image> = {};
   private prop?: Phaser.GameObjects.Image;
   private finished = false;
+  private clouds?: Phaser.GameObjects.TileSprite;
 
   constructor() {
     super('story');
@@ -30,14 +32,14 @@ export class StoryScene extends Phaser.Scene {
     this.finished = false;
     this.pets = {};
     this.prop = undefined;
+    this.clouds = undefined;
   }
 
   create() {
     const { backdrop } = this.story;
     if (backdrop === 'sky') {
       this.add.image(0, 0, 'backyard-sky').setOrigin(0).setDisplaySize(640, 360);
-      const clouds = this.add.tileSprite(0, 60, 640, 360, 'backyard-far').setOrigin(0).setAlpha(0.9);
-      this.events.on('update', (_t: number, dt: number) => (clouds.tilePositionX += dt * 0.25));
+      this.clouds = this.add.tileSprite(0, 60, 640, 360, 'backyard-far').setOrigin(0).setAlpha(0.9);
       this.prop = this.add.image(320, 220, 'plane');
       this.tweens.add({ targets: this.prop, y: 212, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     } else {
@@ -63,6 +65,12 @@ export class StoryScene extends Phaser.Scene {
     this.advance();
   }
 
+  update(time: number, dt: number) {
+    if (this.clouds) this.clouds.tilePositionX += dt * 0.25;
+    this.pets.Ricey?.setTexture(petTexture('ricey', 'idle', time));
+    this.pets.Ramen?.setTexture(petTexture('ramen', 'idle', time, 1700));
+  }
+
   private advance() {
     if (this.finished) return goTo(this, this.step + 1);
     if (this.typing) {
@@ -80,7 +88,7 @@ export class StoryScene extends Phaser.Scene {
   private show(line: Line) {
     const narrator = line.who === '';
     this.face.setVisible(!narrator);
-    if (!narrator) this.face.setTexture(PORTRAIT[line.who]);
+    if (!narrator) this.face.setTexture(PORTRAIT[line.who]).setScale(line.who === 'Nien-Nien' ? 0.5 : 0.8);
     this.name.setText(line.who).setColor(NAME_COLOR[line.who] ?? '#ffffff');
     this.body.setX(narrator ? 40 : 110).setWordWrapWidth(narrator ? 560 : 490);
     this.body.setY(narrator ? 52 : 46);
@@ -110,7 +118,7 @@ export class StoryScene extends Phaser.Scene {
       this.cameras.main.shake(500, 0.004);
     } else if (cue === 'door' && this.prop) {
       const door = this.prop;
-      const nien = this.add.image(door.x, 321, 'nien').setOrigin(0.5, 1).setScale(1.5).setAlpha(0);
+      const nien = this.add.image(door.x, 321, 'nien').setOrigin(0.5, 1).setAlpha(0);
       this.tweens.add({ targets: door, scaleX: 0.25, x: door.x + 18, duration: 300 });
       this.tweens.add({ targets: nien, alpha: 1, duration: 300, delay: 200 });
       for (const p of Object.values(this.pets)) this.tweens.add({ targets: p, y: p.y - 30, duration: 160, yoyo: true, repeat: 2 });

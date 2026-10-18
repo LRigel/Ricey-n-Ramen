@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { petTexture, type PetState } from '../art/animate';
 import { addBackdrop, THEMES, TILE, type Theme, type ThemeId } from '../art/themes';
 import { goTo, textStyle } from '../flow';
 import { LEVELS, type LevelDef } from '../levels';
@@ -24,7 +25,7 @@ const RICEY: PetDef = {
 };
 const RAMEN: PetDef = {
   key: 'ramen', name: 'Ramen', speed: 260, jump: 540, hitW: 46, hitH: 36,
-  canClimb: false, canDash: true, hint: 'X: dash (once per jump)',
+  canClimb: false, canDash: true, hint: 'Jump again in mid-air to dash',
 };
 
 const COYOTE = 0.1; // seconds you can still jump after walking off a ledge
@@ -36,6 +37,7 @@ const STOMP_BOUNCE = 420;
 const TRAIL_SPACING = 3; // px between recorded leader positions
 const FOLLOW_GAP = 22; // samples the follower stays behind (~66px)
 const TAIL_OFFSET = 8; // sprites include a tail, so shift them back over the hitbox
+const DASH_GROUND_CHECK = 28; // px: a jump pressed this close above the ground is a buffered jump, not a dash
 
 const CLEAR_LINES = ['Not in the backyard...', 'Wait, what is that on the ground?', 'Still no Nien-Nien...', 'Nothing up here either.', "There's a light on..."];
 
@@ -52,6 +54,9 @@ class Pet {
   lastVy = 0;
   moving = false;
   airborne = false;
+  climbing = false;
+  vy = 0; // vertical speed this frame (followers have no body to read it from)
+  seed = Math.random() * 5000;
 
   constructor(scene: Phaser.Scene, public def: PetDef) {
     const key = `hb-${def.key}`;
@@ -93,8 +98,14 @@ interface Controls {
   down: boolean;
   jumpHeld: boolean;
   jumpPressed: boolean;
-  dashPressed: boolean;
   swapPressed: boolean;
+}
+
+/** A point on the leader's path; followers replay these, climbing included. */
+interface TrailPoint {
+  x: number;
+  y: number;
+  climb: boolean;
 }
 
 export class GameScene extends Phaser.Scene {
@@ -104,10 +115,10 @@ export class GameScene extends Phaser.Scene {
   private theme!: Theme;
   private pets!: Pet[];
   private leaderIdx = 0;
-  private trail: { x: number; y: number }[] = [];
+  private trail: TrailPoint[] = [];
   private respawn = { x: 0, y: 0 };
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  private padPrev = { a: false, x: false, y: false };
+  private padPrev = { a: false, y: false };
   private collected = 0;
   private totalPickups = 0;
   private pickups!: Phaser.Physics.Arcade.StaticGroup;
@@ -233,7 +244,7 @@ export class GameScene extends Phaser.Scene {
     cam.startFollow(this.leader.hb, true, 0.12, 0.12);
     cam.setDeadzone(80, 60);
 
-    this.keys = this.input.keyboard!.addKeys('LEFT,RIGHT,DOWN,A,D,S,SPACE,Z,W,UP,X,J,C,SHIFT,K,R') as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = this.input.keyboard!.addKeys('LEFT,RIGHT,DOWN,A,D,S,SPACE,Z,W,UP,C,SHIFT,K,R') as Record<string, Phaser.Input.Keyboard.Key>;
 
     const font = textStyle(10);
     this.hud = {
@@ -269,7 +280,7 @@ export class GameScene extends Phaser.Scene {
   private resetPets() {
     const { x, y } = this.respawn;
     this.trail = [];
-    for (let i = FOLLOW_GAP; i >= 0; i--) this.trail.push({ x: x - i * TRAIL_SPACING, y });
+    for (let i = FOLLOW_GAP; i >= 0; i--) this.trail.push({ x: x - i * TRAIL_SPACING, y, climb: false });
     const leader = this.leader;
     leader.body.enable = true;
     leader.placeFeet(x, y);
@@ -278,7 +289,10 @@ export class GameScene extends Phaser.Scene {
     leader.dashT = 0;
     this.follower.body.enable = false;
     this.follower.placeFeet(this.trail[0].x, y);
-    for (const pet of this.pets) pet.facing = 1;
+    for (const pet of this.pets) {
+      pet.facing = 1;
+      pet.climbing = false;
+    }
   }
 
   private readControls(): Controls {
@@ -288,7 +302,6 @@ export class GameScene extends Phaser.Scene {
     const left = k.LEFT.isDown || k.A.isDown || !!pad?.left || stickX < -0.4;
     const right = k.RIGHT.isDown || k.D.isDown || !!pad?.right || stickX > 0.4;
     const padA = !!pad?.A;
-    const padX = !!pad?.X;
     const padY = !!(pad?.Y || pad?.L1 || pad?.R1);
     const jd = Phaser.Input.Keyboard.JustDown;
     const c: Controls = {
@@ -296,10 +309,9 @@ export class GameScene extends Phaser.Scene {
       down: k.DOWN.isDown || k.S.isDown || !!pad?.down || (pad ? pad.leftStick.y > 0.5 : false),
       jumpHeld: k.SPACE.isDown || k.Z.isDown || k.W.isDown || k.UP.isDown || padA,
       jumpPressed: jd(k.SPACE) || jd(k.Z) || jd(k.W) || jd(k.UP) || (padA && !this.padPrev.a),
-      dashPressed: jd(k.X) || jd(k.J) || (padX && !this.padPrev.x),
       swapPressed: jd(k.C) || jd(k.SHIFT) || jd(k.K) || (padY && !this.padPrev.y),
     };
-    this.padPrev = { a: padA, x: padX, y: padY };
+    this.padPrev = { a: padA, y: padY };
     return c;
   }
 
@@ -333,7 +345,10 @@ export class GameScene extends Phaser.Scene {
     if (onGround) {
       pet.coyote = COYOTE;
       pet.dashReady = true;
-      if (!pet.wasGrounded && pet.lastVy > 250) pet.squash(1.25, 0.75);
+      if (!pet.wasGrounded && pet.lastVy > 250) {
+        pet.squash(1.25, 0.75);
+        this.puff(pet.feet.x, pet.feet.y, 4);
+      }
     } else {
       pet.coyote -= dt;
     }
@@ -357,7 +372,8 @@ export class GameScene extends Phaser.Scene {
 
     // Climbing uses a tile lookup rather than blocked.left/right: pushing into
     // the wall while moving up makes Arcade separate on Y and snag the body.
-    if (def.canClimb && input.x && this.wallBeside(b, input.x)) {
+    pet.climbing = def.canClimb && !!input.x && this.wallBeside(b, input.x);
+    if (pet.climbing) {
       b.setVelocity(0, -CLIMB_SPEED);
       pet.jumpCut = true; // don't let the variable-jump cut kill the climb
       pet.airborne = true;
@@ -369,25 +385,32 @@ export class GameScene extends Phaser.Scene {
       pet.buffer = 0;
     }
 
+    // Ramen's dash: press jump again while airborne (but not just before
+    // landing, where the press should stay a buffered jump).
+    const dashNow = def.canDash && pet.buffer > 0 && pet.coyote <= 0 && pet.dashReady && !onGround && !this.nearGround(b);
+    if (dashNow) {
+      pet.dashT = DASH_TIME;
+      pet.dashReady = false;
+      pet.buffer = 0;
+      b.setAllowGravity(false);
+      b.setVelocity(pet.facing * DASH_SPEED, 0);
+      pet.squash(1.3, 0.8);
+      this.puff(pet.feet.x - pet.facing * 20, pet.hb.y, 3);
+    }
+
     if (pet.buffer > 0 && pet.coyote > 0) {
       b.setVelocityY(-def.jump);
       pet.buffer = 0;
       pet.coyote = 0;
       pet.jumpCut = false;
       pet.squash(0.8, 1.2);
+      this.puff(pet.feet.x, pet.feet.y, 3);
     }
     if (!input.jumpHeld && b.velocity.y < -150 && !pet.jumpCut) {
       b.setVelocityY(b.velocity.y * 0.45);
       pet.jumpCut = true;
     }
-
-    if (def.canDash && input.dashPressed && pet.dashReady) {
-      pet.dashT = DASH_TIME;
-      pet.dashReady = false;
-      b.setAllowGravity(false);
-      b.setVelocity(pet.facing * DASH_SPEED, 0);
-      pet.squash(1.3, 0.8);
-    }
+    pet.vy = b.velocity.y;
   }
 
   /** Is there a solid tile right beside the body on side `dir`? */
@@ -397,6 +420,13 @@ export class GameScene extends Phaser.Scene {
       if (this.solidAt(tx, ty)) return true;
     }
     return false;
+  }
+
+  /** Is there something to land on just below a falling body? */
+  private nearGround(b: Body) {
+    if (b.velocity.y <= 0) return false;
+    const ty = Math.floor((b.bottom + DASH_GROUND_CHECK) / TILE);
+    return this.standableAt(Math.floor(b.left / TILE), ty) || this.standableAt(Math.floor(b.right / TILE), ty);
   }
 
   private onLedge(b: Body) {
@@ -409,7 +439,7 @@ export class GameScene extends Phaser.Scene {
     const f = this.leader.feet;
     const last = this.trail[this.trail.length - 1];
     if (Phaser.Math.Distance.Between(f.x, f.y, last.x, last.y) < TRAIL_SPACING) return;
-    this.trail.push(f);
+    this.trail.push({ ...f, climb: this.leader.climbing });
     if (this.trail.length > 200) this.trail.shift();
   }
 
@@ -423,7 +453,15 @@ export class GameScene extends Phaser.Scene {
     const dy = y - before.y;
     pet.moving = Math.abs(dx) + Math.abs(dy) > 0.4;
     pet.airborne = Math.abs(dy) > 1;
-    if (Math.abs(dx) > 0.3) pet.facing = Math.sign(dx);
+    pet.climbing = target.climb && dy < -0.5;
+    pet.vy = dy;
+    if (pet.climbing) {
+      // Face the wall being climbed.
+      const tx = Math.floor(x / TILE);
+      const ty = Math.floor((y - 8) / TILE);
+      if (this.solidAt(tx + 1, ty)) pet.facing = 1;
+      else if (this.solidAt(tx - 1, ty)) pet.facing = -1;
+    } else if (Math.abs(dx) > 0.3) pet.facing = Math.sign(dx);
     else if (!pet.moving) {
       const toLeader = this.leader.hb.x - x;
       if (Math.abs(toLeader) > 8) pet.facing = Math.sign(toLeader);
@@ -477,12 +515,13 @@ export class GameScene extends Phaser.Scene {
     // Hand the follower's path to the new follower, reversed, so the old
     // leader walks toward the new one instead of teleporting.
     const tail = this.trail.slice(-(FOLLOW_GAP + 1)).reverse();
-    tail[tail.length - 1] = next.feet;
+    tail[tail.length - 1] = { ...next.feet, climb: false };
     this.trail = tail;
 
     old.body.setVelocity(0, 0);
     old.body.setAllowGravity(true);
     old.dashT = 0;
+    old.climbing = false;
     old.body.enable = false;
 
     next.body.enable = true;
@@ -544,15 +583,35 @@ export class GameScene extends Phaser.Scene {
   }
 
   private updateViews(time: number) {
-    const walkFrame = Math.floor(time / 110) % 2 ? 'walkA' : 'walkB';
     for (const pet of this.pets) {
       const isLeader = pet === this.leader;
-      const walking = isLeader ? !pet.airborne && Math.abs(pet.body.velocity.x) > 20 : pet.moving;
-      const frame = pet.airborne || pet.dashT > 0 ? 'jump' : walking ? walkFrame : 'idle';
-      pet.view.setTexture(`${pet.def.key}-${frame}`);
-      const f = pet.feet;
-      if (!this.won) pet.view.setPosition(f.x - pet.facing * TAIL_OFFSET, f.y + 1);
+      const walking = isLeader ? !pet.airborne && Math.abs(pet.body.velocity.x) > 20 : pet.moving && !pet.airborne;
+      let state: PetState = 'idle';
+      if (pet.climbing) state = 'climb';
+      else if (pet.dashT > 0) state = 'rise';
+      else if (pet.airborne) state = pet.vy < 0 ? 'rise' : 'fall';
+      else if (walking) state = 'walk';
+      if (this.won) state = 'idle';
+
+      pet.view.setTexture(petTexture(pet.def.key, state, time, pet.seed));
       pet.view.setFlipX(pet.facing < 0).setDepth(isLeader ? 10 : 9);
+      if (this.won) continue;
+      const f = pet.feet;
+      if (state === 'climb') {
+        // Turn to face up the wall, paws against it.
+        pet.view.setOrigin(0.5, 0.5).setAngle(pet.facing > 0 ? -90 : 90);
+        pet.view.setPosition(f.x - pet.facing * 4, pet.hb.y);
+      } else {
+        pet.view.setOrigin(0.5, 1).setAngle(0);
+        pet.view.setPosition(f.x - pet.facing * TAIL_OFFSET, f.y + 1);
+      }
+    }
+  }
+
+  private puff(x: number, y: number, n: number) {
+    for (let i = 0; i < n; i++) {
+      const d = this.add.image(x + (i - (n - 1) / 2) * 10, y - 4, 'dust').setAlpha(0.8).setDepth(11);
+      this.tweens.add({ targets: d, x: d.x + (i - (n - 1) / 2) * 8, y: d.y - 8, alpha: 0, scale: 0.4, duration: 350, onComplete: () => d.destroy() });
     }
   }
 

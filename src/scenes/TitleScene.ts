@@ -1,14 +1,23 @@
 import Phaser from 'phaser';
+import { petTexture } from '../art/animate';
 import { addBackdrop, makeTextures } from '../art/themes';
 import { goTo, savedStep, textStyle } from '../flow';
 import { FLOW } from '../story';
 
 export class TitleScene extends Phaser.Scene {
+  private pets: Phaser.GameObjects.Image[] = [];
+
   constructor() {
     super('title');
   }
 
+  update(time: number) {
+    this.pets[0]?.setTexture(petTexture('ricey', 'walk', time));
+    this.pets[1]?.setTexture(petTexture('ramen', 'walk', time, 45));
+  }
+
   create() {
+    this.pets = [];
     if (!this.textures.exists('ricey-idle')) makeTextures(this);
     if (!this.registry.has('scores')) this.registry.set('scores', {});
 
@@ -46,11 +55,7 @@ export class TitleScene extends Phaser.Scene {
       });
       return img;
     });
-    this.time.addEvent({
-      delay: 140,
-      loop: true,
-      callback: () => pets.forEach((p, i) => p.setTexture(`${['ricey', 'ramen'][i]}-${this.time.now % 280 < 140 ? 'walkA' : 'walkB'}`)),
-    });
+    this.pets = pets;
 
     const kb = this.input.keyboard!;
     const start = () => goTo(this, 0);

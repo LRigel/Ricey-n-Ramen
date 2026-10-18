@@ -63,37 +63,77 @@ const RAMEN_BODY = [
   '....kwddoooooooodwwwk.....',
 ];
 
-/** Three rows of legs; each leg is [startColumn, width]. */
-function legs(width: number, fur: string, positions: [number, number][]) {
-  const rows = [0, 1, 2].map(() => Array(width).fill('.'));
+/** Rows of legs (3 standing, more when dangling); each leg is [startColumn, width]. */
+function legs(width: number, fur: string, positions: [number, number][], height = 3) {
+  const rows = Array.from({ length: height }, () => Array(width).fill('.'));
   for (const [x, w] of positions) {
     for (let i = 0; i < w; i++) {
       const edge = i === 0 || i === w - 1;
-      rows[0][x + i] = edge ? 'k' : fur;
-      rows[1][x + i] = edge ? 'k' : fur;
-      rows[2][x + i] = 'k';
+      for (let y = 0; y < height - 1; y++) rows[y][x + i] = edge ? 'k' : fur;
+      rows[height - 1][x + i] = 'k';
     }
   }
   return rows.map((r) => r.join(''));
 }
 
+/** Move the pixels inside a box by (dx, dy); used to sway tails. */
+function shiftBox(rows: string[], x0: number, x1: number, y0: number, y1: number, dx: number, dy: number) {
+  const grid = rows.map((r) => [...r]);
+  const out = rows.map((r) => [...r]);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) out[y][x] = '.';
+  for (let y = y0; y <= y1; y++) {
+    for (let x = x0; x <= x1; x++) {
+      const ch = grid[y][x];
+      if (ch !== '.' && out[y + dy]?.[x + dx] !== undefined) out[y + dy][x + dx] = ch;
+    }
+  }
+  return out.map((r) => r.join(''));
+}
+
+/** Close the eyes on one row by turning eye pixels into outline. */
+const blink = (rows: string[], row: number, eyes: string) =>
+  rows.map((r, y) => (y === row ? [...r].map((c) => (eyes.includes(c) ? 'k' : c)).join('') : r));
+
 const W = 26;
-const STANCES: Record<string, [number, number][]> = {
-  idle: [[5, 4], [10, 3], [17, 3], [20, 4]],
-  walkA: [[3, 4], [9, 3], [16, 3], [21, 4]],
-  walkB: [[6, 4], [11, 3], [18, 3], [19, 4]],
-  jump: [[2, 4], [7, 3], [19, 3], [22, 4]],
+type Stance = { legs: [number, number][]; height?: number };
+const STANCES: Record<string, Stance> = {
+  idle: { legs: [[5, 4], [10, 3], [17, 3], [20, 4]] },
+  walk1: { legs: [[3, 4], [10, 3], [16, 3], [22, 4]] },
+  walk2: { legs: [[5, 4], [8, 3], [18, 3], [20, 4]] },
+  walk3: { legs: [[7, 4], [4, 3], [20, 3], [16, 4]] },
+  walk4: { legs: [[6, 4], [9, 3], [17, 3], [21, 4]] },
+  rise: { legs: [[2, 4], [7, 3], [19, 3], [22, 4]] },
+  fall: { legs: [[5, 4], [10, 3], [17, 3], [20, 4]], height: 4 },
 };
 
-export const PET_FRAMES = ['idle', 'walkA', 'walkB', 'jump'] as const;
+interface PetArt {
+  body: string[];
+  tail: [x0: number, x1: number, y0: number, y1: number, dx: number, dy: number];
+  eyeRow: number;
+  eyes: string;
+  frontShift: number; // Ramen's chest is narrower, so the front legs sit further back
+}
 
-export const RICEY_FRAMES = Object.fromEntries(
-  PET_FRAMES.map((f) => [f, [...RICEY_BODY, ...legs(W, 'w', STANCES[f])]]),
-) as Record<(typeof PET_FRAMES)[number], string[]>;
+const ART: Record<'ricey' | 'ramen', PetArt> = {
+  ricey: { body: RICEY_BODY, tail: [0, 5, 0, 5, 1, 0], eyeRow: 4, eyes: 'ge', frontShift: 0 },
+  ramen: { body: RAMEN_BODY, tail: [2, 7, 1, 6, 0, -1], eyeRow: 4, eyes: 'e', frontShift: -2 },
+};
 
-// Ramen's chest is narrower than Ricey's ruff, so the front legs sit further back.
-const ramenStance = (f: string) => STANCES[f].map(([x, w]) => [x > 14 ? x - 2 : x, w] as [number, number]);
+/**
+ * Every frame for a pet, keyed `${stance}-${tail}` (tail 0 = rest, 1 = swayed),
+ * plus `blink-${tail}` and a plain `idle` used for portraits.
+ */
+function buildFrames(pet: PetArt) {
+  const frames: Record<string, string[]> = {};
+  const tails = [pet.body, shiftBox(pet.body, ...pet.tail)];
+  for (const [name, st] of Object.entries(STANCES)) {
+    const positions = st.legs.map(([x, w]) => [x > 14 ? x + pet.frontShift : x, w] as [number, number]);
+    tails.forEach((body, t) => (frames[`${name}-${t}`] = [...body, ...legs(W, 'w', positions, st.height)]));
+  }
+  tails.forEach((_, t) => (frames[`blink-${t}`] = blink(frames[`idle-${t}`], pet.eyeRow, pet.eyes)));
+  frames.idle = frames['idle-0'];
+  return frames;
+}
 
-export const RAMEN_FRAMES = Object.fromEntries(
-  PET_FRAMES.map((f) => [f, [...RAMEN_BODY, ...legs(W, 'w', ramenStance(f))]]),
-) as Record<(typeof PET_FRAMES)[number], string[]>;
+export const RICEY_FRAMES = buildFrames(ART.ricey);
+export const RAMEN_FRAMES = buildFrames(ART.ramen);
