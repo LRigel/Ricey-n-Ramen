@@ -37,6 +37,9 @@ const CLIMB_SPEED = 170;
 const DASH_SPEED = 650;
 const DASH_TIME = 0.2;
 const STOMP_BOUNCE = 420;
+const RESPAWN_SAFE_TIME = 1.2; // seconds; stops an enemy on a checkpoint killing you again and again
+const WALKER_SPEED = 80; // px/s for scooters, vacuums and macaques
+const BIRD_SPEED = 1.6; // how fast birds sweep back and forth
 const TRAIL_SPACING = 3; // px between recorded leader positions
 const FOLLOW_GAP = 22; // samples the follower stays behind (~66px)
 const TAIL_OFFSET = 8; // sprites include a tail, so shift them back over the hitbox
@@ -125,6 +128,7 @@ export class GameScene extends Phaser.Scene {
   private pickups!: Phaser.Physics.Arcade.StaticGroup;
   private enemies: Enemy[] = [];
   private dropT = 0; // time left falling through ledges
+  private safeT = 0; // after a respawn, nothing can hurt the pets for this long
   private won = false;
   private levelW = 0;
   private levelH = 0;
@@ -143,6 +147,7 @@ export class GameScene extends Phaser.Scene {
     this.collected = 0;
     this.enemies = [];
     this.dropT = 0;
+    this.safeT = 0;
     this.won = false;
     this.paused = undefined; // quitting from the pause menu leaves this set otherwise
   }
@@ -335,16 +340,17 @@ export class GameScene extends Phaser.Scene {
       this.updateViews(time);
       return;
     }
-    if (jd(this.keys.R) || pad.pressed('select')) return this.die();
+    if (jd(this.keys.R) || pad.pressed('select')) return this.die(true);
     if (input.swapPressed && this.leader.dashT <= 0) this.swap();
 
     this.dropT -= dt;
+    this.safeT -= dt;
     this.moveLeader(this.leader, input, dt);
     this.recordTrail();
     this.moveFollower(this.follower);
     this.moveEnemies(time, dt);
 
-    if (this.leader.feet.y > this.levelH + 40) this.die();
+    if (this.leader.feet.y > this.levelH + 40) this.die(true);
     this.updateViews(time);
   }
 
@@ -492,13 +498,13 @@ export class GameScene extends Phaser.Scene {
         const aheadX = e.dir > 0 ? b.right + 2 : b.left - 2;
         const ground = this.standableAt(Math.floor(aheadX / TILE), Math.floor((b.bottom + 4) / TILE));
         if ((e.dir < 0 && b.blocked.left) || (e.dir > 0 && b.blocked.right) || (b.blocked.down && !ground)) e.dir *= -1;
-        b.setVelocityX(e.dir * 60);
+        b.setVelocityX(e.dir * WALKER_SPEED);
         e.img.setFlipX(e.dir < 0);
       } else {
         e.t += dt;
-        const x = e.x0 + Math.sin(e.t * 1.2) * TILE * 3;
+        const x = e.x0 + Math.sin(e.t * BIRD_SPEED) * TILE * 3;
         e.img.setPosition(x, e.y0 + Math.sin(e.t * 3.1) * 10);
-        e.img.setFlipX(Math.cos(e.t * 1.2) < 0);
+        e.img.setFlipX(Math.cos(e.t * BIRD_SPEED) < 0);
         e.img.setTexture(`${this.theme.bird}-${Math.floor(time / 140) % 2}`);
       }
     }
@@ -565,11 +571,13 @@ export class GameScene extends Phaser.Scene {
     this.tweens.add({ targets: c, scaleY: 1.2, duration: 100, yoyo: true });
   }
 
-  private die() {
-    if (this.won) return;
+  /** Back to the last checkpoint. Hazards and enemies can't do this during the safe time; falls can. */
+  private die(always = false) {
+    if (this.won || (this.safeT > 0 && !always)) return;
     this.cameras.main.flash(200, 255, 120, 120);
     this.cameras.main.shake(150, 0.006);
     this.resetPets();
+    this.safeT = RESPAWN_SAFE_TIME;
   }
 
   private win() {
@@ -627,6 +635,7 @@ export class GameScene extends Phaser.Scene {
 
       pet.view.setTexture(petTexture(pet.def.key, state, time, pet.seed));
       pet.view.setFlipX(pet.facing < 0).setDepth(isLeader ? 10 : 9);
+      pet.view.setAlpha(this.safeT > 0 && Math.floor(time / 80) % 2 ? 0.35 : 1); // flicker while safe
       if (this.won) continue;
       const f = pet.feet;
       if (state === 'climb') {

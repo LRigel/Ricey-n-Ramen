@@ -5,7 +5,8 @@ Built with Phaser 3, TypeScript and Vite.
 
 Ricey and Ramen can't find Nien-Nien. They search the backyard and the bush in
 Perth, find an old ticket to Taipei, fly to Taiwan (night market, Jiufen,
-Elephant Mountain), where Dudu the cat tells them Nien-Nien never left Perth.
+Elephant Mountain), where Dudu, a fat orange tabby whose human is Sunny, tells
+them Nien-Nien never left Perth.
 They fly home and find Nien-Nien was in the bathroom all along.
 
 ## Play

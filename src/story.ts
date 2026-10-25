@@ -82,13 +82,14 @@ export const STORIES: Record<string, Story> = {
     backdrop: 'taipei',
     prop: 'dudu',
     lines: [
-      { who: '', text: 'At the top, a cat is watching the city lights.', zh: '山頂上，有一隻貓正看著城市的燈光。' },
+      { who: '', text: 'At the top, a big orange cat is watching the city lights.', zh: '山頂上，有一隻胖胖的橘貓正看著城市的燈光。' },
       { who: 'Dudu', text: 'You two are a long way from home.', zh: '你們兩個離家很遠喔。' },
       { who: 'Ramen', text: 'We are looking for Nien-Nien! Have you seen Nien-Nien?', zh: '我們在找 Nien-Nien！你有看到 Nien-Nien 嗎？' },
       { who: 'Dudu', text: "Nien-Nien? Of course. I know everyone. I'm Dudu.", zh: 'Nien-Nien？當然囉，我誰都認識。我叫 Dudu。' },
-      { who: 'Dudu', text: 'Nien-Nien never left Perth. Go home, you silly things.', zh: 'Nien-Nien 根本沒離開伯斯。快回家吧，小傻瓜們。' },
+      { who: 'Dudu', text: 'My human, Sunny, says Nien-Nien never left Perth.', zh: '我的主人 Sunny 說，Nien-Nien 根本沒離開伯斯。' },
+      { who: 'Dudu', text: 'Go home, you silly things.', zh: '快回家吧，小傻瓜們。' },
       { who: 'Ricey', text: '...I knew it.', zh: '……我就知道。' },
-      { who: 'Ramen', text: 'Thank you, Dudu! Bye, Dudu!', zh: '謝謝你，Dudu！掰掰，Dudu！' },
+      { who: 'Ramen', text: 'Thank you, Dudu! Say hi to Sunny!', zh: '謝謝你，Dudu！幫我們跟 Sunny 說嗨！' },
     ],
   },
   flyHome: {
