@@ -16,7 +16,6 @@ const start = () => {
     pixelArt: true,
     roundPixels: true,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    input: { gamepad: true },
     physics: { default: 'arcade', arcade: { gravity: { x: 0, y: 1400 } } },
     scene: [TitleScene, StoryScene, GameScene],
   });

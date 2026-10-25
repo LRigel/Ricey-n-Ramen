@@ -2,7 +2,9 @@
 // canvas (easier multi-touch than in-canvas buttons) and feed a shared state
 // that GameScene reads alongside the keyboard and gamepad.
 
+import { Capacitor } from '@capacitor/core';
 import { fontFamily, t } from './i18n';
+import { pad } from './pad';
 
 export const isTouch =
   new URLSearchParams(location.search).has('touch') || window.matchMedia('(pointer: coarse)').matches;
@@ -32,6 +34,7 @@ const CSS = `
 #touch { position: fixed; inset: 0; pointer-events: none; z-index: 10; font-family: "Press Start 2P", monospace; }
 #touch .pad { display: none; }
 #touch.show .pad { display: flex; }
+#touch.padmode .pad { display: none; }
 #touch button, #touch .dpad { pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent; color: #fff; background: rgba(27, 26, 46, 0.45);
   border: 3px solid rgba(255, 246, 194, 0.7); border-radius: 50%; font: inherit; padding: 0; }
@@ -76,7 +79,7 @@ export function setupTouchControls() {
       <button class="swap"></button>
       <button class="jump"></button>
     </div>
-    ${document.fullscreenEnabled ? '<button class="fs" aria-label="Fullscreen">&#x26F6;</button>' : ''}`;
+    ${document.fullscreenEnabled && !Capacitor.isNativePlatform() ? '<button class="fs" aria-label="Fullscreen">&#x26F6;</button>' : ''}`;
   document.body.append(controls);
 
   // The d-pad tracks every finger on it, so you can slide between left and right.
@@ -133,6 +136,13 @@ export function setupTouchControls() {
   });
 
   document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Handhelds like the AYN Thor have both: hide the buttons once the controller
+  // is used, and bring them back if someone touches the screen.
+  pad.onActive(() => controls!.classList.add('padmode'));
+  window.addEventListener('pointerdown', (e) => {
+    if (e.pointerType === 'touch') controls!.classList.remove('padmode');
+  });
 }
 
 /** Show the movement buttons only while a level is being played. */

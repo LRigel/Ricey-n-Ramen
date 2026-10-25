@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ricey n Ramen</string>
+    <string name="title_activity_main">Ricey n Ramen</string>
+    <string name="package_name">fyi.rigel.riceyramen</string>
+    <string name="custom_url_scheme">fyi.rigel.riceyramen</string>
+</resources>

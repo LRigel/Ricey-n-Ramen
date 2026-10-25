@@ -20,9 +20,10 @@ function save(step: number) {
   }
 }
 
-/** Start whatever comes at `step` in the story; past the end goes back to the title. */
+/** Start whatever comes at `step` in the story; -1 goes to the title, past the end restarts. */
 export function goTo(scene: Phaser.Scene, step: number) {
   const s = FLOW[step];
+  if (step === -1) return void scene.scene.start('title');
   if (!s) {
     save(0);
     scene.scene.start('title');

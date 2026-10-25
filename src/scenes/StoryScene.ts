@@ -3,10 +3,11 @@ import { petTexture } from '../art/animate';
 import { addBackdrop } from '../art/themes';
 import { goTo, textStyle } from '../flow';
 import { lang, t, tr } from '../i18n';
+import { pad } from '../pad';
 import { STORIES, type Line, type Story } from '../story';
 
-const PORTRAIT: Record<string, string> = { Ricey: 'ricey-idle', Ramen: 'ramen-idle', 'Nien-Nien': 'nien' };
-const NAME_COLOR: Record<string, string> = { Ricey: '#f6d6aa', Ramen: '#ffb070', 'Nien-Nien': '#9ad4f4' };
+const PORTRAIT: Record<string, string> = { Ricey: 'ricey-idle', Ramen: 'ramen-idle', 'Nien-Nien': 'nien', Dudu: 'dudu' };
+const NAME_COLOR: Record<string, string> = { Ricey: '#f6d6aa', Ramen: '#ffb070', 'Nien-Nien': '#9ad4f4', Dudu: '#d8e05a' };
 
 export class StoryScene extends Phaser.Scene {
   private story!: Story;
@@ -62,11 +63,12 @@ export class StoryScene extends Phaser.Scene {
     const kb = this.input.keyboard!;
     for (const k of ['SPACE', 'ENTER', 'Z', 'X']) kb.on(`keydown-${k}`, () => this.advance());
     this.input.on('pointerdown', () => this.advance());
-    this.input.gamepad?.on('down', () => this.advance());
     this.advance();
   }
 
   update(time: number, dt: number) {
+    pad.poll(time);
+    if (pad.anyPressed('a', 'b', 'start')) this.advance();
     if (this.clouds) this.clouds.tilePositionX += dt * 0.25;
     this.pets.Ricey?.setTexture(petTexture('ricey', 'idle', time));
     this.pets.Ramen?.setTexture(petTexture('ramen', 'idle', time, 1700));

@@ -11,7 +11,7 @@ const VIEW_H = 360;
 
 type Ctx = CanvasRenderingContext2D;
 
-export type ThemeId = 'backyard' | 'bush' | 'market' | 'jiufen' | 'house';
+export type ThemeId = 'backyard' | 'bush' | 'market' | 'jiufen' | 'taipei' | 'house';
 
 export interface Theme {
   sky: [string, string];
@@ -324,6 +324,89 @@ export const THEMES: Record<ThemeId, Theme> = {
     },
   },
 
+  taipei: {
+    sky: ['#2a2a5a', '#f08a7a'],
+    collectible: 'pineapplecake',
+    collectibleName: 'pineapplecakes',
+    enemy: 'monkey',
+    bird: 'bluemagpie',
+    goal: 'dudu',
+    top(ctx) {
+      this.fill(ctx);
+      rect(ctx, '#9a968c', 0, 0, TILE, 8);
+      rect(ctx, '#b8b4a8', 0, 0, TILE, 2);
+      rect(ctx, '#5f8a3a', 0, 8, TILE, 3);
+      rect(ctx, '#5f8a3a', 6, 11, 4, 2);
+      rect(ctx, '#5f8a3a', 22, 11, 4, 2);
+    },
+    fill(ctx) {
+      rect(ctx, '#4a3a2a', 0, 0, TILE, TILE);
+      speckle(ctx, '#3a2c1e', 17, 0);
+      rect(ctx, '#5a4632', 4, 14, 12, 2);
+    },
+    block(ctx) {
+      rect(ctx, '#3a3a40', 0, 0, TILE, TILE);
+      rect(ctx, '#7a7a84', 2, 2, 28, 28);
+      rect(ctx, '#9a9aa4', 4, 4, 14, 6);
+      rect(ctx, '#5a5a64', 16, 20, 12, 8);
+    },
+    ledge(ctx) {
+      // Wooden boardwalk.
+      rect(ctx, '#3a2214', 0, 0, TILE, 12);
+      for (let x = 0; x < TILE; x += 8) rect(ctx, '#a8743e', x + 1, 2, 6, 7);
+    },
+    hazard(ctx) {
+      spikes(ctx, '#2f5a2a', '#e04a4a', 8);
+      spikes(ctx, '#3f6a32', '#e04a4a', 16);
+    },
+    far(ctx) {
+      // Taipei skyline with Taipei 101 rising above it, lights coming on.
+      const r = rng(31);
+      for (let x = 0; x < VIEW_W; ) {
+        const w = 30 + r() * 50;
+        const h = 50 + r() * 90;
+        rect(ctx, '#3a3466', x, 320 - h, w, h);
+        for (let wy = 320 - h + 8; wy < 312; wy += 12) {
+          for (let wx = x + 5; wx < x + w - 6; wx += 9) if (r() < 0.35) rect(ctx, '#ffd98a', wx, wy, 4, 5);
+        }
+        x += w + 4;
+      }
+      const cx = 430;
+      rect(ctx, '#2c2850', cx - 22, 250, 44, 70); // base
+      for (let i = 0; i < 8; i++) {
+        // Eight stacked segments, each flaring out at the top like the real tower.
+        const y = 250 - (i + 1) * 22;
+        ctx.fillStyle = '#2c2850';
+        ctx.beginPath();
+        ctx.moveTo(cx - 16, y + 22);
+        ctx.lineTo(cx - 22, y);
+        ctx.lineTo(cx + 22, y);
+        ctx.lineTo(cx + 16, y + 22);
+        ctx.fill();
+        rect(ctx, '#7fd0c0', cx - 14, y + 4, 28, 2);
+      }
+      rect(ctx, '#2c2850', cx - 10, 50, 20, 26);
+      rect(ctx, '#2c2850', cx - 2, 18, 4, 34);
+      rect(ctx, '#ff6a6a', cx - 2, 16, 4, 4);
+    },
+    near(ctx) {
+      // Forest on the slopes of Elephant Mountain.
+      const r = rng(13);
+      ctx.fillStyle = '#2f4a2a';
+      for (let x = -20; x < VIEW_W + 40; x += 34) {
+        ctx.beginPath();
+        ctx.ellipse(x, 300 + r() * 12, 30 + r() * 12, 40 + r() * 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#3c5c32';
+      for (let x = 0; x < VIEW_W; x += 52) {
+        ctx.beginPath();
+        ctx.ellipse(x + r() * 20, 312, 26, 22, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+  },
+
   house: {
     sky: ['#f4e7d2', '#e8d6ba'],
     collectible: 'treat',
@@ -396,10 +479,22 @@ export function makeTextures(scene: Phaser.Scene) {
   }
 }
 
-/** Sky plus two parallax layers whose ground line sits at world y = groundY. */
-export function addBackdrop(scene: Phaser.Scene, theme: ThemeId, width: number, groundY = 320) {
+/**
+ * Sky plus two parallax layers. Their ground line meets the level's ground
+ * (two tiles up from the bottom) when the camera is at the bottom. Tall levels
+ * also scroll the layers slowly upward, so the scenery rises as you climb.
+ */
+export function addBackdrop(scene: Phaser.Scene, theme: ThemeId, width: number, levelH = 12 * TILE) {
   scene.add.image(0, 0, `${theme}-sky`).setOrigin(0).setDisplaySize(VIEW_W, VIEW_H).setScrollFactor(0).setDepth(-10);
-  const top = groundY - 320;
-  scene.add.tileSprite(0, top, width, VIEW_H, `${theme}-far`).setOrigin(0).setScrollFactor(0.2, 1).setDepth(-9);
-  scene.add.tileSprite(0, top, width, VIEW_H, `${theme}-near`).setOrigin(0).setScrollFactor(0.5, 1).setDepth(-8);
+  const groundY = levelH - 2 * TILE;
+  const maxScroll = Math.max(0, levelH - VIEW_H);
+  const tall = maxScroll > 2 * TILE;
+  const layer = (key: string, fx: number, fy: number, depth: number) =>
+    scene.add
+      .tileSprite(0, groundY - 320 - maxScroll * (1 - fy), width, VIEW_H, key)
+      .setOrigin(0)
+      .setScrollFactor(fx, fy)
+      .setDepth(depth);
+  layer(`${theme}-far`, 0.2, tall ? 0.3 : 1, -9);
+  layer(`${theme}-near`, 0.5, tall ? 0.6 : 1, -8);
 }

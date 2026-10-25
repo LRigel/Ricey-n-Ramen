@@ -4,6 +4,7 @@ import { addBackdrop, THEMES, TILE, type Theme, type ThemeId } from '../art/them
 import { goTo, textStyle } from '../flow';
 import { LEVELS, type LevelDef } from '../levels';
 import { lang, t, tr } from '../i18n';
+import { pad } from '../pad';
 import { isTouch, showTouchPad, touch } from '../touch';
 
 type Body = Phaser.Physics.Arcade.Body;
@@ -118,7 +119,7 @@ export class GameScene extends Phaser.Scene {
   private trail: TrailPoint[] = [];
   private respawn = { x: 0, y: 0 };
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
-  private padPrev = { a: false, y: false };
+  private paused?: Phaser.GameObjects.Container;
   private collected = 0;
   private totalPickups = 0;
   private pickups!: Phaser.Physics.Arcade.StaticGroup;
@@ -143,6 +144,7 @@ export class GameScene extends Phaser.Scene {
     this.enemies = [];
     this.dropT = 0;
     this.won = false;
+    this.paused = undefined; // quitting from the pause menu leaves this set otherwise
   }
 
   private get leader() {
@@ -161,7 +163,8 @@ export class GameScene extends Phaser.Scene {
     const id: ThemeId = this.level.theme;
     this.levelW = Math.max(...map.map((r) => r.length)) * TILE;
     this.levelH = map.length * TILE;
-    addBackdrop(this, id, this.levelW);
+    addBackdrop(this, id, this.levelW, this.levelH);
+    this.physics.world.resume();
     showTouchPad(true);
     this.events.once('shutdown', () => showTouchPad(false));
 
@@ -246,7 +249,7 @@ export class GameScene extends Phaser.Scene {
     cam.startFollow(this.leader.hb, true, 0.12, 0.12);
     cam.setDeadzone(80, 60);
 
-    this.keys = this.input.keyboard!.addKeys('LEFT,RIGHT,DOWN,A,D,S,SPACE,Z,W,UP,C,SHIFT,K,R') as Record<string, Phaser.Input.Keyboard.Key>;
+    this.keys = this.input.keyboard!.addKeys('LEFT,RIGHT,DOWN,A,D,S,SPACE,Z,W,UP,C,SHIFT,K,R,P,ESC,Q') as Record<string, Phaser.Input.Keyboard.Key>;
 
     const font = textStyle(10);
     const zh = lang === 'zh'; // Chinese text is taller, so the HUD lines spread out
@@ -256,8 +259,8 @@ export class GameScene extends Phaser.Scene {
       hint: this.add.text(62, zh ? 34 : 32, '', font).setScrollFactor(0).setDepth(100),
       pickups: this.add.text(626, 14, '', textStyle(12)).setOrigin(1, 0).setScrollFactor(0).setDepth(100),
     };
-    if (this.levelIdx === 0 && !isTouch) {
-      this.add.text(320, 342, t('controls'), font).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0.85);
+    if (this.levelIdx === 0 && (!isTouch || pad.active)) {
+      this.add.text(320, 342, t(pad.active ? 'controlsPad' : 'controls'), font).setOrigin(0.5).setScrollFactor(0).setDepth(100).setAlpha(0.85);
     }
     const title = this.add.text(320, 110, tr(this.level.name, this.level.zh.name), textStyle(20)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
     const sub = this.add.text(320, 142, tr(this.level.country, this.level.zh.country), textStyle(10, '#fff6c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100);
@@ -300,26 +303,31 @@ export class GameScene extends Phaser.Scene {
 
   private readControls(): Controls {
     const k = this.keys;
-    const pad = this.input.gamepad?.pad1;
-    const stickX = pad ? pad.leftStick.x : 0;
-    const left = k.LEFT.isDown || k.A.isDown || !!pad?.left || stickX < -0.4 || touch.left;
-    const right = k.RIGHT.isDown || k.D.isDown || !!pad?.right || stickX > 0.4 || touch.right;
-    const padA = !!pad?.A;
-    const padY = !!(pad?.Y || pad?.L1 || pad?.R1);
+    const left = k.LEFT.isDown || k.A.isDown || pad.held('left') || touch.left;
+    const right = k.RIGHT.isDown || k.D.isDown || pad.held('right') || touch.right;
     const jd = Phaser.Input.Keyboard.JustDown;
-    const c: Controls = {
+    // Pad: A jumps (again in mid-air to dash), X / Y / bumpers swap.
+    return {
       x: (right ? 1 : 0) - (left ? 1 : 0),
-      down: k.DOWN.isDown || k.S.isDown || !!pad?.down || (pad ? pad.leftStick.y > 0.5 : false) || touch.down,
-      jumpHeld: k.SPACE.isDown || k.Z.isDown || k.W.isDown || k.UP.isDown || padA || touch.jump,
-      jumpPressed: jd(k.SPACE) || jd(k.Z) || jd(k.W) || jd(k.UP) || (padA && !this.padPrev.a) || touch.consume('jumpPressed'),
-      swapPressed: jd(k.C) || jd(k.SHIFT) || jd(k.K) || (padY && !this.padPrev.y) || touch.consume('swapPressed'),
+      down: k.DOWN.isDown || k.S.isDown || pad.held('down') || touch.down,
+      jumpHeld: k.SPACE.isDown || k.Z.isDown || k.W.isDown || k.UP.isDown || pad.held('a') || touch.jump,
+      jumpPressed: jd(k.SPACE) || jd(k.Z) || jd(k.W) || jd(k.UP) || pad.pressed('a') || touch.consume('jumpPressed'),
+      swapPressed: jd(k.C) || jd(k.SHIFT) || jd(k.K) || pad.anyPressed('x', 'y', 'lb', 'rb') || touch.consume('swapPressed'),
     };
-    this.padPrev = { a: padA, y: padY };
-    return c;
   }
 
   update(time: number, deltaMs: number) {
     const dt = Math.min(deltaMs / 1000, 1 / 30);
+    const wasPad = pad.active;
+    pad.poll(time);
+    if (pad.active && !wasPad) this.refreshHud();
+
+    const jd = Phaser.Input.Keyboard.JustDown;
+    if (!this.won && (jd(this.keys.P) || jd(this.keys.ESC) || pad.pressed('start'))) return this.togglePause();
+    if (this.paused) {
+      if (jd(this.keys.Q) || pad.pressed('b') || pad.pressed('select')) goTo(this, -1);
+      return;
+    }
     const input = this.readControls();
 
     if (this.won) {
@@ -327,7 +335,7 @@ export class GameScene extends Phaser.Scene {
       this.updateViews(time);
       return;
     }
-    if (Phaser.Input.Keyboard.JustDown(this.keys.R)) return this.die();
+    if (jd(this.keys.R) || pad.pressed('select')) return this.die();
     if (input.swapPressed && this.leader.dashT <= 0) this.swap();
 
     this.dropT -= dt;
@@ -578,7 +586,28 @@ export class GameScene extends Phaser.Scene {
     this.add.rectangle(320, 165, 440, 120, 0x1b1a2e, 0.85).setScrollFactor(0).setDepth(99).setStrokeStyle(3, 0xfff6c2);
     this.add.text(320, 130, tr(this.level.clear, this.level.zh.clear), textStyle(12)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
     this.add.text(320, 165, `${t(this.theme.collectibleName)} ${this.collected}/${this.totalPickups}`, textStyle(10, '#fff6c2')).setOrigin(0.5).setScrollFactor(0).setDepth(100);
-    this.add.text(320, 198, t(isTouch ? 'nextTouch' : 'next'), textStyle(10)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+    this.add.text(320, 198, t(pad.active ? 'nextPad' : isTouch ? 'nextTouch' : 'next'), textStyle(10)).setOrigin(0.5).setScrollFactor(0).setDepth(100);
+  }
+
+  /** Freeze the level behind a small menu: resume, or quit to the title. */
+  private togglePause() {
+    if (this.paused) {
+      this.paused.destroy();
+      this.paused = undefined;
+      this.physics.world.resume();
+      this.tweens.resumeAll();
+      return;
+    }
+    this.physics.world.pause();
+    this.tweens.pauseAll();
+    this.paused = this.add
+      .container(0, 0, [
+        this.add.rectangle(320, 180, 640, 360, 0x1b1a2e, 0.75),
+        this.add.text(320, 140, t('paused'), textStyle(20, '#fff6c2')).setOrigin(0.5),
+        this.add.text(320, 190, t(pad.active ? 'pauseHelpPad' : 'pauseHelp'), textStyle(10)).setOrigin(0.5),
+      ])
+      .setScrollFactor(0)
+      .setDepth(200);
   }
 
   private finishLevel() {
@@ -626,7 +655,8 @@ export class GameScene extends Phaser.Scene {
   private refreshHud() {
     const def = this.leader.def;
     this.hud.face.setTexture(`${def.key}-idle`);
-    this.hud.name.setText(isTouch ? def.name : `${def.name}  ${t('swapHint')}`);
+    const swapHint = pad.active ? t('swapHintPad') : isTouch ? '' : t('swapHint');
+    this.hud.name.setText(`${def.name}  ${swapHint}`.trim());
     this.hud.hint.setText(t(def.hint));
     this.hud.pickups.setText(`${t(this.theme.collectibleName)} ${this.collected}/${this.totalPickups}`);
   }

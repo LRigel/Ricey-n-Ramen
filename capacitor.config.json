@@ -1,0 +1,8 @@
+{
+  "appId": "fyi.rigel.riceyramen",
+  "appName": "Ricey n Ramen",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#1b1a2e"
+  }
+}

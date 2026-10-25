@@ -6,7 +6,9 @@
     "dev": "vite --host",
     "build": "tsc && vite build",
     "preview": "vite preview --host",
-    "deploy": "npm run build && wrangler pages deploy dist --project-name ricey-n-ramen --branch main --commit-dirty=true"
+    "deploy": "npm run build && wrangler pages deploy dist --project-name ricey-n-ramen --branch main --commit-dirty=true",
+    "android": "scripts/android.sh",
+    "android:install": "scripts/android.sh --install"
   },
   "repository": {
     "type": "git",
@@ -20,9 +22,12 @@
   },
   "homepage": "https://github.com/LRigel/Ricey-n-Ramen#readme",
   "dependencies": {
+    "@capacitor/android": "^7.6.9",
+    "@capacitor/core": "^7.6.9",
     "phaser": "^3.90.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.9",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "wrangler": "^3.114.17"

@@ -1,6 +1,6 @@
 import type { ThemeId } from './art/themes';
 
-export type Speaker = 'Ricey' | 'Ramen' | 'Nien-Nien' | '';
+export type Speaker = 'Ricey' | 'Ramen' | 'Nien-Nien' | 'Dudu' | '';
 
 export interface Line {
   who: Speaker;
@@ -22,7 +22,7 @@ export const STORIES: Record<string, Story> = {
     backdrop: 'house',
     prop: 'bowl',
     lines: [
-      { who: '', text: 'A sunny morning in Australia...', zh: '澳洲一個陽光明媚的早晨……' },
+      { who: '', text: 'A sunny morning in Perth, Australia...', zh: '澳洲伯斯，一個陽光明媚的早晨……' },
       { who: 'Ramen', text: 'Breakfast time! Nien-Nien? NIEN-NIEN?!', zh: '早餐時間！Nien-Nien？NIEN-NIEN？！' },
       { who: 'Ricey', text: 'The bowl is empty. This is a crisis.', zh: '碗是空的。這是大危機。' },
       { who: 'Ramen', text: "Nien-Nien is GONE! We have to look everywhere!", zh: 'Nien-Nien 不見了！我們要到處找！' },
@@ -74,19 +74,34 @@ export const STORIES: Record<string, Story> = {
       { who: 'Ricey', text: 'Let me see that ticket again.', zh: '機票再給我看一下。', cue: 'ticket' },
       { who: 'Ricey', text: '...This ticket is from LAST YEAR.', zh: '……這張機票是去年的。' },
       { who: 'Ramen', text: '...Oops.', zh: '……糟糕。' },
-      { who: 'Ricey', text: "We're going home.", zh: '我們回家。' },
+      { who: 'Ricey', text: 'Then where IS Nien-Nien?', zh: '那 Nien-Nien 到底在哪裡？' },
+      { who: 'Ramen', text: 'Up there! From the top of that mountain we can see EVERYTHING!', zh: '去那上面！從山頂上什麼都看得到！' },
+    ],
+  },
+  dudu: {
+    backdrop: 'taipei',
+    prop: 'dudu',
+    lines: [
+      { who: '', text: 'At the top, a cat is watching the city lights.', zh: '山頂上，有一隻貓正看著城市的燈光。' },
+      { who: 'Dudu', text: 'You two are a long way from home.', zh: '你們兩個離家很遠喔。' },
+      { who: 'Ramen', text: 'We are looking for Nien-Nien! Have you seen Nien-Nien?', zh: '我們在找 Nien-Nien！你有看到 Nien-Nien 嗎？' },
+      { who: 'Dudu', text: "Nien-Nien? Of course. I know everyone. I'm Dudu.", zh: 'Nien-Nien？當然囉，我誰都認識。我叫 Dudu。' },
+      { who: 'Dudu', text: 'Nien-Nien never left Perth. Go home, you silly things.', zh: 'Nien-Nien 根本沒離開伯斯。快回家吧，小傻瓜們。' },
+      { who: 'Ricey', text: '...I knew it.', zh: '……我就知道。' },
+      { who: 'Ramen', text: 'Thank you, Dudu! Bye, Dudu!', zh: '謝謝你，Dudu！掰掰，Dudu！' },
     ],
   },
   flyHome: {
     backdrop: 'sky',
     prop: 'plane',
-    lines: [{ who: '', text: 'Flying home to Australia...', zh: '飛回澳洲……' }],
+    lines: [{ who: '', text: 'Flying home to Perth...', zh: '飛回伯斯……' }],
   },
   home: {
     backdrop: 'house',
     lines: [
       { who: 'Ramen', text: "Home! But there's still no Nien-Nien...", zh: '到家了！可是還是沒有 Nien-Nien……' },
-      { who: 'Ricey', text: 'Search every room. And mind the vacuum.', zh: '每個房間都找找。小心掃地機器人。' },
+      { who: 'Ricey', text: 'Dudu said Nien-Nien is here. Search every room.', zh: 'Dudu 說 Nien-Nien 就在這裡。每個房間都找找。' },
+      { who: 'Ricey', text: 'And mind the vacuum.', zh: '還有，小心掃地機器人。' },
     ],
   },
   ending: {
@@ -96,7 +111,7 @@ export const STORIES: Record<string, Story> = {
       { who: '', text: '*FLUSH*', zh: '*嘩啦——*', cue: 'flush' },
       { who: 'Nien-Nien', text: 'Oh, hi you two! Why are you so out of breath?', zh: '咦，你們兩個！怎麼喘成這樣？', cue: 'door' },
       { who: 'Ricey', text: 'You were in the BATHROOM?!', zh: '你一直在廁所裡？！' },
-      { who: 'Ramen', text: 'We went to TAIWAN!', zh: '我們去了台灣耶！' },
+      { who: 'Ramen', text: 'We went to TAIWAN! We met DUDU!', zh: '我們去了台灣耶！還認識了 Dudu！' },
       { who: 'Nien-Nien', text: 'Who wants dinner?', zh: '誰要吃晚餐？' },
       { who: 'Ramen', text: 'ME! ME! ME!', zh: '我！我！我！' },
       { who: 'Ricey', text: '...Me too.', zh: '……我也要。' },
@@ -119,8 +134,10 @@ export const FLOW: Step[] = [
   { story: 'uphill' },
   { level: 3 },
   { story: 'oops' },
+  { level: 4 },
+  { story: 'dudu' },
   { story: 'flyHome' },
   { story: 'home' },
-  { level: 4 },
+  { level: 5 },
   { story: 'ending' },
 ];
